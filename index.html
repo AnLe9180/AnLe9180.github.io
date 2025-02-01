@@ -1,1 +1,136 @@
-"Hello GitHub Pages!" 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Optimal Value - Coming Soon</title>
+  <style>
+    /* Reset and basic styling */
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+    #comingSoon {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      z-index: 10;
+    }
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <!-- Coming soon message -->
+  <div id="comingSoon">
+    <h1>Coming Soon</h1>
+    <p>Our website is under construction...</p>
+  </div>
+
+  <!-- Canvas for the optical illusion -->
+  <canvas id="illusion"></canvas>
+
+  <script>
+    const canvas = document.getElementById('illusion');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
+    
+    // Set the canvas size to the window dimensions
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Variables for the Riemann sum–style scaling effect:
+    // We keep track of the last mouse position and accumulate the movement distance.
+    let lastMouseX = mouseX, lastMouseY = mouseY;
+    let accumulatedDistance = 0;
+
+    window.addEventListener('mousemove', (e) => {
+      mouseX = e.clientX;
+      mouseY = e.clientY;
+    });
+
+    let angle = 0;
+
+    function draw() {
+      // Calculate how far the mouse moved since the last frame
+      const dx = mouseX - lastMouseX;
+      const dy = mouseY - lastMouseY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Add the distance traveled as if summing rectangle widths (Riemann sum style)
+      accumulatedDistance += distance;
+      lastMouseX = mouseX;
+      lastMouseY = mouseY;
+
+      // Use the accumulated distance to calculate a scale factor.
+      // This makes the illusion “grow” in discrete steps as the mouse moves.
+      // (Here we cycle the scale factor between 1 and 2 using modulo arithmetic.)
+      const scaleFactor = 1 + ((accumulatedDistance % 500) / 500);
+
+      // Clear the canvas for the next frame
+      ctx.clearRect(0, 0, width, height);
+
+      // Center the optical illusion on the current mouse position.
+      const centerX = mouseX;
+      const centerY = mouseY;
+      // Limit the maximum radius for clarity.
+      const maxRadius = Math.hypot(width, height) / 4;
+      const numCircles = 15;
+
+      // For each “circle” (or arc), we’ll approximate its curve using small rectangles.
+      for (let i = 0; i < numCircles; i++) {
+        // The base radius grows with each circle; we then apply the scaling factor.
+        const baseRadius = (i + 1) * (maxRadius / numCircles);
+        const scaledRadius = baseRadius * scaleFactor;
+
+        // Define the start and end angles for this arc.
+        const startAngle = angle + i * 0.3;
+        const endAngle = startAngle + Math.PI * 1.5;
+        
+        // Approximate the arc with a series of small rectangles (like summing up areas in a Riemann sum)
+        const numRectangles = 50;
+        const angleIncrement = (endAngle - startAngle) / numRectangles;
+        
+        for (let j = 0; j < numRectangles; j++) {
+          // Determine the angle for the current rectangle.
+          const currentAngle = startAngle + j * angleIncrement;
+          const nextAngle = currentAngle + angleIncrement;
+          const midAngle = (currentAngle + nextAngle) / 2;
+          
+          // Compute the position along the arc.
+          const x = centerX + scaledRadius * Math.cos(midAngle);
+          const y = centerY + scaledRadius * Math.sin(midAngle);
+          
+          // The “width” of this rectangle is proportional to the length of the arc segment.
+          const rectWidth = scaledRadius * angleIncrement;
+          const rectHeight = 10; // Fixed height for visual consistency.
+          
+          // Draw the rectangle rotated to align with the arc.
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(midAngle);
+          ctx.fillStyle = `hsla(${(i * 40 + angle * 50) % 360}, 100%, 50%, 0.5)`;
+          ctx.fillRect(-rectWidth / 2, -rectHeight / 2, rectWidth, rectHeight);
+          ctx.restore();
+        }
+      }
+      
+      // Increment the rotation for the next frame
+      angle += 0.01;
+      
+      requestAnimationFrame(draw);
+    }
+    draw();
+  </script>
+</body>
+</html>
