@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>The Optimal Value - Coming Soon</title>
   <style>
-    /* Reset and basic styling */
+    /* Basic reset and styling */
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
-      background: #000;
+      background: #111;
       color: #fff;
       font-family: Arial, sans-serif;
     }
@@ -32,16 +32,21 @@
     <p>Our website is under construction...</p>
   </div>
 
-  <!-- Canvas for the optical illusion -->
+  <!-- Canvas for the visualization -->
   <canvas id="illusion"></canvas>
 
   <script>
     const canvas = document.getElementById('illusion');
     const ctx = canvas.getContext('2d');
+
     let width, height;
     let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
-    
-    // Set the canvas size to the window dimensions
+    // A time variable to animate the sine phase
+    let phase = 0;
+    // Number of rectangles used to approximate the integral (Riemann sum)
+    const nRectangles = 50;
+
+    // Resize canvas to full window size
     function resize() {
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
@@ -49,85 +54,90 @@
     window.addEventListener('resize', resize);
     resize();
 
-    // Variables for the Riemann sum–style scaling effect:
-    // We keep track of the last mouse position and accumulate the movement distance.
-    let lastMouseX = mouseX, lastMouseY = mouseY;
-    let accumulatedDistance = 0;
-
+    // Update mouse position on movement
     window.addEventListener('mousemove', (e) => {
       mouseX = e.clientX;
       mouseY = e.clientY;
     });
 
-    let angle = 0;
-
     function draw() {
-      // Calculate how far the mouse moved since the last frame
-      const dx = mouseX - lastMouseX;
-      const dy = mouseY - lastMouseY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      // Add the distance traveled as if summing rectangle widths (Riemann sum style)
-      accumulatedDistance += distance;
-      lastMouseX = mouseX;
-      lastMouseY = mouseY;
-
-      // Use the accumulated distance to calculate a scale factor.
-      // This makes the illusion “grow” in discrete steps as the mouse moves.
-      // (Here we cycle the scale factor between 1 and 2 using modulo arithmetic.)
-      const scaleFactor = 1 + ((accumulatedDistance % 500) / 500);
-
       // Clear the canvas for the next frame
       ctx.clearRect(0, 0, width, height);
 
-      // Center the optical illusion on the current mouse position.
-      const centerX = mouseX;
-      const centerY = mouseY;
-      // Limit the maximum radius for clarity.
-      const maxRadius = Math.hypot(width, height) / 4;
-      const numCircles = 15;
+      // Increase phase over time
+      phase += 0.02;
 
-      // For each “circle” (or arc), we’ll approximate its curve using small rectangles.
-      for (let i = 0; i < numCircles; i++) {
-        // The base radius grows with each circle; we then apply the scaling factor.
-        const baseRadius = (i + 1) * (maxRadius / numCircles);
-        const scaledRadius = baseRadius * scaleFactor;
+      // Use the horizontal mouse position as the integration limit
+      // (ensure the limit is at least 50 pixels)
+      const integrationLimit = Math.max(50, mouseX);
 
-        // Define the start and end angles for this arc.
-        const startAngle = angle + i * 0.3;
-        const endAngle = startAngle + Math.PI * 1.5;
-        
-        // Approximate the arc with a series of small rectangles (like summing up areas in a Riemann sum)
-        const numRectangles = 50;
-        const angleIncrement = (endAngle - startAngle) / numRectangles;
-        
-        for (let j = 0; j < numRectangles; j++) {
-          // Determine the angle for the current rectangle.
-          const currentAngle = startAngle + j * angleIncrement;
-          const nextAngle = currentAngle + angleIncrement;
-          const midAngle = (currentAngle + nextAngle) / 2;
-          
-          // Compute the position along the arc.
-          const x = centerX + scaledRadius * Math.cos(midAngle);
-          const y = centerY + scaledRadius * Math.sin(midAngle);
-          
-          // The “width” of this rectangle is proportional to the length of the arc segment.
-          const rectWidth = scaledRadius * angleIncrement;
-          const rectHeight = 10; // Fixed height for visual consistency.
-          
-          // Draw the rectangle rotated to align with the arc.
-          ctx.save();
-          ctx.translate(x, y);
-          ctx.rotate(midAngle);
-          ctx.fillStyle = `hsla(${(i * 40 + angle * 50) % 360}, 100%, 50%, 0.5)`;
-          ctx.fillRect(-rectWidth / 2, -rectHeight / 2, rectWidth, rectHeight);
-          ctx.restore();
+      // Use the vertical mouse position to scale the amplitude linearly.
+      // When the mouse is at the top, amplitude is small; at the bottom, it's larger.
+      const amplitude = (mouseY / height) * (height / 3);
+
+      // Set the starting x-position and the width of each rectangle
+      const dx = integrationLimit / nRectangles;
+
+      // Draw a baseline for reference (centered vertically)
+      const baseY = height / 2;
+
+      // Draw the Riemann rectangles
+      let totalArea = 0;
+      for (let i = 0; i < nRectangles; i++) {
+        // x position for this rectangle (using left-endpoint evaluation)
+        const x = i * dx;
+        // Evaluate the function f(x) = sin(x * frequency + phase)
+        // We use a frequency factor so that the curve has visible oscillations
+        const frequency = 0.05;
+        const f = Math.sin(x * frequency + phase);
+
+        // Height of the rectangle (scaled linearly by amplitude)
+        const rectHeight = amplitude * f;
+        // Approximate the area (could be negative; we take absolute value for display)
+        totalArea += rectHeight * dx;
+
+        // Set a fill color that shifts with the rectangle index and phase for optical effect
+        const hue = (i * 8 + phase * 60) % 360;
+        ctx.fillStyle = `hsla(${hue}, 80%, 50%, 0.6)`;
+
+        // For an optical twist, rotate each rectangle slightly based on its x position.
+        // Save the context, apply translation and rotation, then draw.
+        ctx.save();
+        // Position at the center of the rectangle's base
+        const rectX = x + dx / 2;
+        // The rectangle will extend upward or downward from the baseline.
+        // We'll pivot at the baseline.
+        ctx.translate(rectX, baseY);
+        // Rotate by a small angle (varying with x and phase)
+        const rotation = 0.1 * Math.sin(x * frequency + phase);
+        ctx.rotate(rotation);
+        // Draw the rectangle.
+        // If rectHeight is positive, draw upward; if negative, downward.
+        // The rectangle's width is dx and its height is the absolute value of rectHeight.
+        ctx.fillRect(-dx / 2, 0, dx, rectHeight);
+        ctx.restore();
+      }
+
+      // Optionally, draw the actual sine curve for reference (with a contrasting color)
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 2;
+      for (let x = 0; x <= integrationLimit; x++) {
+        const y = baseY + amplitude * Math.sin(x * 0.05 + phase);
+        if (x === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
         }
       }
-      
-      // Increment the rotation for the next frame
-      angle += 0.01;
-      
+      ctx.stroke();
+
+      // Display the approximate area in the top-right corner
+      ctx.font = "16px sans-serif";
+      ctx.fillStyle = "#fff";
+      const areaText = `Approx. Area: ${Math.abs(totalArea).toFixed(2)}`;
+      ctx.fillText(areaText, width - 200, 30);
+
       requestAnimationFrame(draw);
     }
     draw();
