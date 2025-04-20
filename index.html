@@ -34,13 +34,14 @@
       window.addEventListener('resize', resize);
       resize();
 
-      // Star properties
-      const numStars = 1000;  // Increased number of stars
+      // Star density (stars per pixel)
+      const starDensity = 0.008;
+      const numStars = Math.floor(width * height * starDensity);
       const maxSpeed = 0.3;
       const maxLineDistance = 120;
       const stars = [];
 
-      // Initialize stars
+      // Initialize stars based on initial screen size
       for (let i = 0; i < numStars; i++) {
         stars.push({
           x: Math.random() * width,
