@@ -1,24 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>The Optimal Value - Coming Soon</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Floating Stars with Interactive Lines</title>
   <style>
-    /* Basic reset and styling */
-    html, body {
+    /* Fullscreen canvas and reset margins */
+    body {
       margin: 0;
-      padding: 0;
       overflow: hidden;
-      background: #111;
+      background: #000;
       color: #fff;
-      font-family: Arial, sans-serif;
-    }
-    #comingSoon {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      z-index: 10;
+      font-family: sans-serif;
     }
     canvas {
       display: block;
@@ -26,122 +19,112 @@
   </style>
 </head>
 <body>
-  <!-- Coming soon message -->
-  <div id="comingSoon">
-    <h1>Coming Soon</h1>
-    <p>This website is under construction...</p>
-    <p>- Anthony Le</p>
-  </div>
-
-  <!-- Canvas for the visualization -->
-  <canvas id="illusion"></canvas>
-
+  <canvas id="starfield"></canvas>
   <script>
-    const canvas = document.getElementById('illusion');
-    const ctx = canvas.getContext('2d');
+    (function() {
+      const canvas = document.getElementById('starfield');
+      const ctx = canvas.getContext('2d');
+      let width, height;
 
-    let width, height;
-    let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
-    // A time variable to animate the sine phase
-    let phase = 0;
-    // Number of rectangles used to approximate the integral (Riemann sum)
-    const nRectangles = 50;
+      // Resize canvas to fill viewport
+      function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+      }
+      window.addEventListener('resize', resize);
+      resize();
 
-    // Resize canvas to full window size
-    function resize() {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resize);
-    resize();
+      // Star properties
+      const numStars = 300;  // Increased number of stars
+      const maxSpeed = 0.3;
+      const maxLineDistance = 120;
+      const stars = [];
 
-    // Update mouse position on movement
-    window.addEventListener('mousemove', (e) => {
-      mouseX = e.clientX;
-      mouseY = e.clientY;
-    });
-
-    function draw() {
-      // Clear the canvas for the next frame
-      ctx.clearRect(0, 0, width, height);
-
-      // Increase phase over time
-      phase += 0.02;
-
-      // Use the horizontal mouse position as the integration limit
-      // (ensure the limit is at least 50 pixels)
-      const integrationLimit = Math.max(50, mouseX);
-
-      // Use the vertical mouse position to scale the amplitude linearly.
-      // When the mouse is at the top, amplitude is small; at the bottom, it's larger.
-      const amplitude = (mouseY / height) * (height / 3);
-
-      // Set the starting x-position and the width of each rectangle
-      const dx = integrationLimit / nRectangles;
-
-      // Draw a baseline for reference (centered vertically)
-      const baseY = height / 2;
-
-      // Draw the Riemann rectangles
-      let totalArea = 0;
-      for (let i = 0; i < nRectangles; i++) {
-        // x position for this rectangle (using left-endpoint evaluation)
-        const x = i * dx;
-        // Evaluate the function f(x) = sin(x * frequency + phase)
-        // We use a frequency factor so that the curve has visible oscillations
-        const frequency = 0.05;
-        const f = Math.sin(x * frequency + phase);
-
-        // Height of the rectangle (scaled linearly by amplitude)
-        const rectHeight = amplitude * f;
-        // Approximate the area (could be negative; we take absolute value for display)
-        totalArea += rectHeight * dx;
-
-        // Set a fill color that shifts with the rectangle index and phase for optical effect
-        const hue = (i * 8 + phase * 60) % 360;
-        ctx.fillStyle = `hsla(${hue}, 80%, 50%, 0.6)`;
-
-        // For an optical twist, rotate each rectangle slightly based on its x position.
-        // Save the context, apply translation and rotation, then draw.
-        ctx.save();
-        // Position at the center of the rectangle's base
-        const rectX = x + dx / 2;
-        // The rectangle will extend upward or downward from the baseline.
-        // We'll pivot at the baseline.
-        ctx.translate(rectX, baseY);
-        // Rotate by a small angle (varying with x and phase)
-        const rotation = 0.1 * Math.sin(x * frequency + phase);
-        ctx.rotate(rotation);
-        // Draw the rectangle.
-        // If rectHeight is positive, draw upward; if negative, downward.
-        // The rectangle's width is dx and its height is the absolute value of rectHeight.
-        ctx.fillRect(-dx / 2, 0, dx, rectHeight);
-        ctx.restore();
+      // Initialize stars
+      for (let i = 0; i < numStars; i++) {
+        stars.push({
+          x: Math.random() * width,
+          y: Math.random() * height,
+          vx: (Math.random() * 2 - 1) * maxSpeed,
+          vy: (Math.random() * 2 - 1) * maxSpeed
+        });
       }
 
-      // Optionally, draw the actual sine curve for reference (with a contrasting color)
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-      ctx.lineWidth = 2;
-      for (let x = 0; x <= integrationLimit; x++) {
-        const y = baseY + amplitude * Math.sin(x * 0.05 + phase);
-        if (x === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
+      // Track mouse position
+      const mouse = { x: null, y: null };
+      window.addEventListener('mousemove', e => {
+        mouse.x = e.clientX;
+        mouse.y = e.clientY;
+      });
+      window.addEventListener('mouseout', () => {
+        mouse.x = null;
+        mouse.y = null;
+      });
+
+      // Animation loop
+      function animate() {
+        ctx.clearRect(0, 0, width, height);
+
+        // Draw static overlay text
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.font = '24px sans-serif';
+        ctx.fillText('Coming Soon', width / 2, height / 2 - 40);
+        ctx.font = '18px sans-serif';
+        ctx.fillText('This website is under construction...', width / 2, height / 2);
+        ctx.fillText('- Anthony Le', width / 2, height / 2 + 30);
+
+        // Count connections
+        let connectionCount = 0;
+
+        // Draw stars and interactive lines
+        for (const star of stars) {
+          // Move stars
+          star.x += star.vx;
+          star.y += star.vy;
+
+          // Wrap around edges
+          if (star.x < 0) star.x = width;
+          if (star.x > width) star.x = 0;
+          if (star.y < 0) star.y = height;
+          if (star.y > height) star.y = 0;
+
+          // Draw star
+          ctx.beginPath();
+          ctx.arc(star.x, star.y, 2, 0, Math.PI * 2);
+          ctx.fillStyle = '#fff';
+          ctx.fill();
+
+          // Draw line to mouse if within range
+          if (mouse.x !== null && mouse.y !== null) {
+            const dx = star.x - mouse.x;
+            const dy = star.y - mouse.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < maxLineDistance) {
+              connectionCount++;
+              const alpha = 1 - dist / maxLineDistance;
+              ctx.beginPath();
+              ctx.moveTo(star.x, star.y);
+              ctx.lineTo(mouse.x, mouse.y);
+              ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
+              ctx.stroke();
+            }
+          }
         }
+
+        // Draw connection count (node degree)
+        if (mouse.x !== null && mouse.y !== null) {
+          ctx.textAlign = 'left';
+          ctx.font = '16px sans-serif';
+          ctx.fillText(`Connected Nodes: ${connectionCount}`, 10, 20);
+        }
+
+        requestAnimationFrame(animate);
       }
-      ctx.stroke();
 
-      // Display the approximate area in the top-right corner
-      ctx.font = "16px sans-serif";
-      ctx.fillStyle = "#fff";
-      const areaText = `Approx. Area: ${Math.abs(totalArea).toFixed(2)}`;
-      ctx.fillText(areaText, width - 200, 30);
-
-      requestAnimationFrame(draw);
-    }
-    draw();
+      animate();
+    })();
   </script>
 </body>
 </html>
